@@ -1,5 +1,6 @@
-window.onload = main;
-function main () {
+window.onload = start;
+var rotation = 0.0;
+function start () {
     const canvas = document.querySelector('#game');
     const gl = canvas.getContext('webgl');
     if (!gl) {
@@ -9,17 +10,23 @@ function main () {
 
     const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec2 aTextureCoord;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
-    void main() {
+    varying highp vec2 vTextureCoord;
+
+    void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      vTextureCoord = aTextureCoord;
     }
     `;
     const fsSource = `
-    void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    varying highp vec2 vTextureCoord;
+    uniform sampler2D uSampler;
+    void main(void) {
+      gl_FragColor = texture2D(uSampler, vTextureCoord);
     }
     `;
 
@@ -29,15 +36,28 @@ function main () {
         program : shaderProgram,
         attribLocations : {
             vertexPosition : gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+            textureCoord : gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
         },
         uniformLocations: {
             projectionMatrix : gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
             modelViewMatrix : gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
         },
     };
 
-    const buffers = initBuffers(gl);
-    drawScene(gl, programInfo, buffers);
+    const texture = loadTexture(gl, 'textures.png');
+
+    const geom = main();
+    const buffers = initBuffers(gl, geom);
+    var then = 0;
+    function render(now) {
+        now *= 0.001;
+        const deltaTime = now - then;
+        then = now;
+        drawScene(gl, programInfo, buffers, texture, deltaTime);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
 }
 
 function initShaderProgram(gl, vsSource, fsSource) {
@@ -72,27 +92,37 @@ function loadShader(gl, type, source) {
     return shader;
 }
 
-function initBuffers(gl) {
+function initBuffers(gl, geom) {
+    const {positions, textureCoordinates, indices} = geom;
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-    const positions = [
-        -1.0,  1.0,
-         1.0,  1.0,
-        -1.0, -1.0,
-         1.0, -1.0,
-    ];
 
     gl.bufferData(
         gl.ARRAY_BUFFER,
         new Float32Array(positions),
         gl.STATIC_DRAW);
+    
+    const textureCoordBuffer  = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array(textureCoordinates),
+        gl.STATIC_DRAW
+    );
+
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(indices), gl.STATIC_DRAW);
+    
     return {
         position : positionBuffer,
+        textureCoord : textureCoordBuffer,
+        indices : indexBuffer,
     };
 }
 
-function drawScene(gl, programInfo, buffers) {
+function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     gl.clearColor(0.0, 0.5, 0.5, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
@@ -115,10 +145,33 @@ function drawScene(gl, programInfo, buffers) {
         modelViewMatrix,
         [-0.0, 0.0, -6.0]);
     
+    mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        rotation,
+        [0, 0, 1]);
+
+    mat4.rotate(
+        modelViewMatrix,
+        modelViewMatrix,
+        rotation,
+        [0, 1, 0]);
+    
+    // Bind Position
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
     gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition,
-        2, gl.FLOAT, false, 0, 0);
+        3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    
+    // Bind Textures
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord,
+        2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+    
+    // Bind indicies
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
     gl.useProgram(programInfo.program);
 
     gl.uniformMatrix4fv(
@@ -130,5 +183,28 @@ function drawScene(gl, programInfo, buffers) {
         false,
         modelViewMatrix);
     
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-} 
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    rotation += deltaTime;
+}
+
+function loadTexture(gl, url) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+        new Uint8Array([0, 0, 255, 255]));
+    const image = new Image();
+    image.onload = function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    };
+    image.src = url;   
+    return texture;
+}
