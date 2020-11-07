@@ -11,7 +11,7 @@ serv.listen(process.env.PORT || 2000, () => {
     console.log('Server Started');
 });
 
-const WORLDSIZE = 1;
+const WORLDSIZE = 10;
 let Map = new (require('./game/map.js'))('123123', 16, WORLDSIZE);
 
 let chunks = {};

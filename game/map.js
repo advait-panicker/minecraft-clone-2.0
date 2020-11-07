@@ -11,7 +11,7 @@ class Map {
         let i = 0;
         for (let z = chnkZ*this.CHUNKSIZE; z < (chnkZ+1)*this.CHUNKSIZE; z++) {
             for (let x = chnkX*this.CHUNKSIZE; x < (chnkX+1)*this.CHUNKSIZE; x++) {
-                const height = this.p.noise(x, z) * 40 + 10;
+                const height = this.p.noise(x, z) * 20 + 10;
                 // console.log(x, z, z * this.CHUNKSIZE + x);
                 chunk[z * this.CHUNKSIZE + x] = [];
                 for (let y = 0; y < 256; y++) {

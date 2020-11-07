@@ -48,7 +48,7 @@ function start (chunks) {
 
     const texture = loadTexture(gl, 'textures.png');
 
-    const geom = main(chunks);
+    const {geom, tris} = main(chunks);
     buffers = initBuffers(gl, geom);
 
     var then = 0;
@@ -59,8 +59,9 @@ function start (chunks) {
         dz += (moveForward-moveBackward)*SPEED*deltaTime;
         dy -= (moveUp-moveDown)*SPEED*deltaTime;
         dx -= (moveRight-moveLeft)*SPEED*deltaTime;
+        rotation += (turnRight-turnLeft)*deltaTime;
 
-        drawScene(gl, programInfo, buffers, texture, deltaTime);
+        drawScene(gl, programInfo, buffers, tris, texture, deltaTime);
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
@@ -129,7 +130,7 @@ function initBuffers(gl, geom) {
     };
 }
 
-function drawScene(gl, programInfo, buffers, texture, deltaTime) {
+function drawScene(gl, programInfo, buffers, tris, texture, deltaTime) {
     gl.clearColor(0.0, 0.5, 0.5, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
@@ -147,22 +148,22 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     
     const modelViewMatrix = mat4.create();
 
-    mat4.translate(
-        modelViewMatrix,
-        modelViewMatrix,
-        [dx, dy, dz]);
-    
-    mat4.rotate(
-        modelViewMatrix,
-        modelViewMatrix,
-        rotation,
-        [0, 0, 1]);
-
     mat4.rotate(
         modelViewMatrix,
         modelViewMatrix,
         rotation,
         [0, 1, 0]);
+
+    mat4.translate(
+        modelViewMatrix,
+        modelViewMatrix,
+        [dx, dy, dz]);
+    
+    // mat4.rotate(
+    //     modelViewMatrix,
+    //     modelViewMatrix,
+    //     rotation,
+    //     [0, 0, 1]);
     
     // Bind Position
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
@@ -194,7 +195,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
-    gl.drawElements(gl.TRIANGLES, 1536, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, tris, gl.UNSIGNED_SHORT, 0);
     // rotation += deltaTime;
 }
 

@@ -1,4 +1,5 @@
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, moveUp = false, moveDown = false;
+let turnLeft = false, turnRight = false;
 let dx = 0, dy = 0, dz = 0;
 const SPEED = 10;
 var onKeyDown = function(event) {
@@ -26,6 +27,12 @@ var onKeyDown = function(event) {
         case 16: // shift
             moveDown = true;    
             break;
+        case 81:
+            turnLeft = true;
+            break;
+        case 69:
+            turnRight = true;
+            break;
     }
 };
 var onKeyUp = function(event) {
@@ -52,6 +59,12 @@ var onKeyUp = function(event) {
             break;
         case 16: // shift
             moveDown = false;    
+            break;
+        case 81:
+            turnLeft = false;
+            break;
+        case 69:
+            turnRight = false;
             break;
     }
 };
