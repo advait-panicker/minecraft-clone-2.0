@@ -1,0 +1,24 @@
+{
+  "name": "minecraft-clone-2",
+  "version": "1.0.0",
+  "description": "Like minecraft-clone, but written in raw WebGL.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/advait-panicker/minecraft-clone-2.0.git"
+  },
+  "author": "Advait Panicker",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/advait-panicker/minecraft-clone-2.0/issues"
+  },
+  "homepage": "https://github.com/advait-panicker/minecraft-clone-2.0#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "seed-random": "^2.2.0",
+    "socket.io": "^3.0.0"
+  }
+}
