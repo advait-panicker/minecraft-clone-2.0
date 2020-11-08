@@ -1,9 +1,10 @@
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, moveUp = false, moveDown = false;
 let turnLeft = false, turnRight = false;
 let dx = 0, dy = 0, dz = 0;
+var rotY = 0.0, rotX = 0;
 const SPEED = 10;
 var onKeyDown = function(event) {
-    console.log(dx, dy, dz);
+    updatef3();
     switch (event.keyCode) {
         case 87: // w
         case 38: // up
@@ -36,7 +37,7 @@ var onKeyDown = function(event) {
     }
 };
 var onKeyUp = function(event) {
-    console.log(dx, dy, dz);
+    updatef3();
     switch (event.keyCode) {
         case 87: // w
         case 38: // up
@@ -68,6 +69,39 @@ var onKeyUp = function(event) {
             break;
     }
 };
-
+function updatef3() {
+    document.getElementById('dx').innerText = dx;
+    document.getElementById('dy').innerText = dy;
+    document.getElementById('dz').innerText = dz;
+}
 document.addEventListener('keydown', onKeyDown, false);
 document.addEventListener('keyup', onKeyUp, false);
+
+var canvas = document.querySelector('#game');
+
+canvas.requestPointerLock = canvas.requestPointerLock ||
+                            canvas.mozRequestPointerLock;
+
+document.exitPointerLock = document.exitPointerLock ||
+                           document.mozExitPointerLock;
+
+canvas.onclick = function() {
+  canvas.requestPointerLock();
+};
+
+document.addEventListener('pointerlockchange', lockChangeAlert, false);
+document.addEventListener('mozpointerlockchange', lockChangeAlert, false);
+
+function lockChangeAlert() {
+  if (document.pointerLockElement === canvas ||
+      document.mozPointerLockElement === canvas) {
+    document.addEventListener("mousemove", updatePosition, false);
+  } else {
+    document.removeEventListener("mousemove", updatePosition, false);
+  }
+}
+
+function updatePosition(e) {
+    rotY += e.movementX / 400; 
+    rotX += e.movementY / 500;
+}

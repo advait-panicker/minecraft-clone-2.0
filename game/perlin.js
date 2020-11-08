@@ -27,9 +27,6 @@ class Perlin {
         const s_x = x - c_x, s_y = y - c_y;
         function gradient(p, xoff, yoff) {
             let v = p.getVector(c_x+xoff, c_y+yoff);
-            if (px == 0 && py == 0) {
-                console.log(`dx:${xoff}, ${yoff} ${v[0]*(s_x-xoff) + v[1]*(s_y-yoff)}`);
-            }
             return v[0]*(s_x-xoff) + v[1]*(s_y-yoff);
         }
         const ix0 = this.interp(gradient(this, 0, 0), gradient(this, 1, 0), s_x);
