@@ -1,63 +1,93 @@
 let socket = io();
-socket.on('chunk', (chunk) => {
-    console.log(chunk.chnkX, chunk.chnkZ);
-    drawChunk(chunk.data, chunk.chnkX, chunk.chnkZ);
-});
-const WORLDSIZE = 1;
+const WORLDSIZE = 400;
 const CHUNKSIZE = 16;
+const RENDERDISTANCE = 4;
 let chunks = {}; 
-function drawChunk(chunk, chnkX, chnkZ) {
-    chunks = {...chunks, ...chunk};
+socket.on('chunk', (chunk) => {
+    // console.log(chunk.chnkX, chunk.chnkZ);
+    if (chunks[chunk.chnkX +  chunk.chnkZ * WORLDSIZE] == undefined) {
+        drawChunk(chunk.data, chunk.chnkX, chunk.chnkZ);
+        const cx = Math.floor(dx / CHUNKSIZE), cz = Math.floor(dz / CHUNKSIZE);
+        for (let name in scene) {
+            const x = name % WORLDSIZE;
+            const z = (name - x) / WORLDSIZE;
+            if (Math.abs(x - cx) > RENDERDISTANCE || Math.abs(z - cz) > RENDERDISTANCE) {
+                delete chunks[name];
+                delete scene[name];
+            }
+        }
+    }
+});
+socket.on('updatePos', players => {
+    // const a = players[socket.id].pos;
+    // dx = a.x; dy = a.y; dz = a.z;
+    const cx = Math.floor(dx / CHUNKSIZE), cz = Math.floor(dz / CHUNKSIZE);
+    for (let z = cz-RENDERDISTANCE; z < cz+RENDERDISTANCE+1; z++) {
+        for (let x = cx-RENDERDISTANCE; x < cx+RENDERDISTANCE+1; x++) {
+            if (chunks[x + z * WORLDSIZE] == undefined && z >= 0 && x >= 0) {
+                socket.emit('requestChunk', {x : x, z : z});
+            }
+        }
+    }
+});
+function drawChunk(chunkData, chnkX, chnkZ) {
+    chunks[chnkX + chnkZ * WORLDSIZE] = chunkData;
     let pos = [], tex = [], id = [];
     let i = 0;
-    function makeFace(x,y,z,t) {
+    function makeFace(x,y,z,t,b) {
         pos.push(x+t.a.x, y+t.a.y, z+t.a.z);
         pos.push(x+t.b.x, y+t.b.y, z+t.b.z);
         pos.push(x+t.c.x, y+t.c.y, z+t.c.z);
         pos.push(x+t.d.x, y+t.d.y, z+t.d.z);
-        tex.push(0, 0);
-        tex.push(1, 0);
-        tex.push(1, 1);
-        tex.push(0, 1);
+        const tx = (b-1) / 10, ty = (b-1) / 10;
+        tex.push(tx+0.01 , ty+0.099);
+        tex.push(tx+0.099, ty+0.099);
+        tex.push(tx+0.099, ty+0.01 );
+        tex.push(tx+0.01 , ty+0.01 );
         id.push(i, i + 1, i + 2, i, i + 2, i + 3);
         i += 4;
     }
-    function getBlockST(xpos, ypos, zpos) { // Just for air and undef
-        // const x = xpos % CHUNKSIZE, y = ypos, z = zpos % CHUNKSIZE;
-        const x = xpos, y = ypos, z = zpos;
-        const loc = z * CHUNKSIZE + x;
-        if (chunks[loc] == undefined) {
+    this.getBlockST = function(x, y, z) { // Just for air and undef
+        // const x = xpos % CHUNKSIZE, z = zpos % CHUNKSIZE;
+        const cx = Math.floor(x / CHUNKSIZE), cz = Math.floor(z / CHUNKSIZE);
+        const chunk = chunks[cx + cz * WORLDSIZE];
+        if (chunk == undefined) {
             return 0;
-        } else if (chunks[loc][y] == undefined) {
+        } else if (chunk[z] == undefined) {
+            return 0;
+        } else if (chunk[z][x] == undefined) {
+            return 0;
+        } else if (chunk[z][x][y] == undefined){
             return 0;
         } else {
-            return chunks[loc][y];
+            return chunk[z][x][y];
         }
     }
     for (let z = chnkZ*CHUNKSIZE; z < (chnkZ+1)*CHUNKSIZE; z++) {
         for (let x = chnkX*CHUNKSIZE; x < (chnkX+1)*CHUNKSIZE; x++) {
             for (let y = 0; y < 256; y++) {
-                if (getBlockST(x, y, z) != 0) {
-                    if (getBlockST(x  , y+1, z) == 0) {
-                        makeFace  (x  , y  , z, Tile.TOP);
+                const b = this.getBlockST(x, y, z);
+                if (b != 0) {
+                    if (this.getBlockST(x  , y+1, z) == 0) {
+                        makeFace  (x  , y  , z, Tile.TOP, b);
                     }
-                    if (getBlockST(x+1, y  , z) == 0) {
-                        makeFace  (x  , y  , z, Tile.XP);
+                    if (this.getBlockST(x+1, y  , z) == 0) {
+                        makeFace  (x  , y  , z, Tile.XP, b);
                     }
-                    if (getBlockST(x-1, y  , z) == 0) {
-                        makeFace  (x  , y  , z, Tile.XN);
+                    if (this.getBlockST(x-1, y  , z) == 0) {
+                        makeFace  (x  , y  , z, Tile.XN, b);
                     }
-                    if (getBlockST(x  , y  , z+1) == 0) {
-                        makeFace  (x  , y  , z, Tile.ZP);
+                    if (this.getBlockST(x  , y  , z+1) == 0) {
+                        makeFace  (x  , y  , z, Tile.ZP, b);
                     }
-                    if (getBlockST(x  , y  , z-1) == 0) {
-                        makeFace  (x  , y  , z, Tile.ZN);
+                    if (this.getBlockST(x  , y  , z-1) == 0) {
+                        makeFace  (x  , y  , z, Tile.ZN, b);
                     }
                 }
             }
         }
     }
-    addToScene(gl, {positions : pos, textureCoordinates : tex, indices : id});
+    addToScene(gl, {positions : pos, textureCoordinates : tex, indices : id}, chnkX + chnkZ * WORLDSIZE);
 }
 const p = {
     A : {x : 0, y :  0, z : 0},
@@ -155,5 +185,5 @@ function cubeGeom(a) {
         1.0,  1.0,
         0.0,  1.0,
       ];    
-    return {positions : pos, textureCoordinates : tex, indices : id};
+    addToScene(gl, {positions : pos, textureCoordinates : tex, indices : id});
 }

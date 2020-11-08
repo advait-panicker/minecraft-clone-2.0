@@ -1,5 +1,5 @@
 // window.onload = start;
-let scene = [];
+let scene = {};
 // const canvas = document.querySelector('#game');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -56,7 +56,7 @@ function render(now) {
     dy += (moveUp-moveDown)*SPEED*deltaTime;
     dx += (Math.cos(rotY)*(moveRight-moveLeft)+Math.sin(rotY)*(moveForward-moveBackward))*SPEED*deltaTime;
     rotY += (turnRight-turnLeft)*deltaTime;
-
+    socket.emit('move', {x : dx, y : dy, z : dz});
     drawScene(gl, programInfo, scene, texture);
     requestAnimationFrame(render);
 }
@@ -94,7 +94,7 @@ function loadShader(gl, type, source) {
     return shader;
 }
 
-function addToScene(gl, geom) {
+function addToScene(gl, geom, name) {
     const {positions, textureCoordinates, indices} = geom;
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -117,22 +117,24 @@ function addToScene(gl, geom) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(indices), gl.STATIC_DRAW);
     
-    scene.push({
+    scene[name] = {
         bufferData: {
             position : positionBuffer,
             textureCoord : textureCoordBuffer,
             indices : indexBuffer,},
         tris: indices.length
-    });
+    };
 }
 
 function drawScene(gl, programInfo, scene, texture) {
-    gl.clearColor(0.0, 0.5, 0.5, 1.0);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
+    gl.enable(gl.SAMPLE_COVERAGE);
+    gl.sampleCoverage(0.5, false);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     const projectionMatrix = mat4.create();
@@ -164,7 +166,8 @@ function drawScene(gl, programInfo, scene, texture) {
         modelViewMatrix,
         [-dx, -dy, -dz]);
     
-    scene.forEach((obj) => {
+    for (let name in scene) {
+        const obj = scene[name];
         const buffers = obj.bufferData;
         // Bind Position
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
@@ -197,7 +200,7 @@ function drawScene(gl, programInfo, scene, texture) {
         gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
         gl.drawElements(gl.TRIANGLES, obj.tris, gl.UNSIGNED_SHORT, 0);
-    });
+    }
 }
 
 function loadTexture(gl, url) {
